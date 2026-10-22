@@ -6,6 +6,9 @@ spring:
       hibernate:
         "[format_sql]": true
 
+jwt:
+  secret: ${JWT_SECRET:dev-secret-key-for-local-testing-with-at-least-256-bits-long}
+
 springdoc:
   api-docs:
     enabled: true
@@ -14,7 +17,7 @@ springdoc:
 
 logging:
   level:
-    root: DEBUG
+    root: INFO
     "[org.springframework.web]": DEBUG
     "[org.springframework.security]": DEBUG
     "[org.hibernate.SQL]": DEBUG

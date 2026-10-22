@@ -9,7 +9,6 @@ from pathlib import Path
 
 def load_env_file(env_path: Path) -> bool:
     if not env_path.is_file():
-        print("Arquivo .env não encontrado!")
         return False
 
     with env_path.open(encoding="utf-8") as env_file:
@@ -40,29 +39,43 @@ def load_env_file(env_path: Path) -> bool:
 
 def main() -> int:
     backend_dir = Path(__file__).resolve().parent
-    if not load_env_file(backend_dir / ".env"):
+    use_testcontainers = "--testcontainers" in sys.argv or "-t" in sys.argv
+    has_env = load_env_file(backend_dir / ".env")
+
+    if not has_env and not use_testcontainers:
+        print("Arquivo .env não encontrado!")
         return 1
 
-    print("Variáveis carregadas:")
-    print(
-        "   DB_URL: "
-        + os.environ.get("DB_URL", "jdbc:postgresql://localhost:5432/icol_db")
-    )
-    print("   DB_USERNAME: " + os.environ.get("DB_USERNAME", "postgres"))
-    print("   JWT_SECRET: configurado (valor ocultado)")
-    print()
-    print("Iniciando aplicação...")
+    if has_env:
+        print("Variáveis carregadas do .env:")
+        if not use_testcontainers:
+            print("   DB_URL: " + os.environ.get("DB_URL", "jdbc:postgresql://localhost:5432/icol_db"))
+            print("   DB_USERNAME: " + os.environ.get("DB_USERNAME", "postgres"))
+        print("   JWT_SECRET: configurado (valor ocultado)")
+    else:
+        print("Modo Testcontainers ativo sem .env: usando configurações automáticas de desenvolvimento.")
 
-    app_dir = backend_dir
+    goal = "spring-boot:test-run" if use_testcontainers else "spring-boot:run"
+    print()
+    if use_testcontainers:
+        print("🐳 Iniciando com Testcontainers (PostgreSQL dinâmico no Docker)...")
+    else:
+        print("🚀 Iniciando aplicação...")
+
+    mvn_cmd = "./mvnw" if (backend_dir / "mvnw").is_file() else "mvn"
+    env_vars = os.environ.copy()
+    if "SPRING_PROFILES_ACTIVE" not in env_vars:
+        env_vars["SPRING_PROFILES_ACTIVE"] = "dev"
+
     try:
         return subprocess.run(
-            ["mvn", "spring-boot:run"],
-            cwd=app_dir,
-            env=os.environ.copy(),
+            [mvn_cmd, goal],
+            cwd=backend_dir,
+            env=env_vars,
             check=False,
         ).returncode
     except FileNotFoundError:
-        print("Maven não encontrado. Instale Maven ou adicione-o ao PATH.", file=sys.stderr)
+        print(f"Comando {mvn_cmd} não encontrado.", file=sys.stderr)
         return 1
 
 

@@ -1,79 +1,87 @@
 # ICOL System - Backend API
 
-> Sistema de gestão interna para a ONG ICOL (Instituto de Capacitação e Orientação Livre), focado no gerenciamento de cursos, alunos, turmas e controle de frequência.
+API de gestão acadêmica para a ONG ICOL, desenvolvida com Spring Boot.
 
-## 📌 Sobre o Projeto
+## Tecnologias
 
-Este projeto é o Backend da solução desenvolvida para a **ONG ICOL**, uma instituição que oferece cursos gratuitos de capacitação. O objetivo do sistema é modernizar a gestão acadêmica da ONG, substituindo controles manuais por uma plataforma centralizada e segura.
+- Java 21 e Spring Boot 3
+- Spring Data JPA / Hibernate
+- Spring Security com JWT, Argon2id e autorização por perfil
+- PostgreSQL com migrations Flyway
+- Testcontainers para testes de integração
+- Maven
 
-O sistema foi desenvolvido seguindo a arquitetura **MVC** em camadas, utilizando **Spring Boot** para garantir robustez, escalabilidade e segurança.
+## Configuração local
 
-## 🚀 Tecnologias Utilizadas
+Configure as variáveis de ambiente antes de iniciar:
 
-* **Java 17/21** - Linguagem de programação.
-* **Spring Boot 3** - Framework principal.
-* **Spring Data JPA (Hibernate)** - Persistência e mapeamento objeto-relacional (ORM).
-* **Spring Security** - Autenticação e Criptografia de senhas (BCrypt).
-* **PostgreSQL** - Banco de dados relacional (Produção).
-* **H2 Database** - Banco de dados em memória (Desenvolvimento/Testes).
-* **Lombok** - Redução de código boilerplate.
-* **Maven** - Gerenciador de dependências.
+```env
+DB_URL=jdbc:postgresql://localhost:5432/icol_db
+DB_USERNAME=postgres
+DB_PASSWORD=<senha-do-banco>
+JWT_SECRET=<segredo-aleatorio-com-no-minimo-32-bytes>
+JWT_EXPIRATION=3600000
+ICOL_ADMIN_EMAIL=<email-da-coordenadora-inicial>
+ICOL_ADMIN_PASSWORD=<senha-com-no-minimo-8-caracteres>
+```
 
-## 🏗️ Arquitetura e Design
+`JWT_SECRET` é obrigatório. A aplicação falha ao iniciar se o segredo estiver
+ausente ou tiver menos de 32 bytes. `JWT_EXPIRATION` é expresso em
+milissegundos; por padrão, os tokens expiram em uma hora. O seed cria uma
+coordenadora somente quando ainda não existe uma e as duas variáveis
+`ICOL_ADMIN_EMAIL` e `ICOL_ADMIN_PASSWORD` foram configuradas.
 
-O projeto segue uma arquitetura em camadas (Layered Architecture) para garantir a separação de responsabilidades:
+O banco PostgreSQL precisa existir antes de iniciar. O Flyway aplica as
+migrations de `src/main/resources/db/migration/`, e o Hibernate valida o schema
+sem alterá-lo.
 
-1.  **Model (Entities):** Representação das tabelas do banco de dados (`usuarios_icol`, `alunos_icol`, `cursos_icol`, etc.).
-2.  **Repository:** Interfaces que estendem `JpaRepository` para comunicação direta com o banco.
-3.  **Service:** Camada "Coração" do sistema, onde residem todas as **Regras de Negócio** (Validação de CPF, Criptografia, Vínculos, etc.).
-4.  **Controller:** Camada REST que expõe os endpoints da API (GET, POST, PUT, DELETE) para o Frontend.
-5.  **Config:** Configurações de segurança e Beans.
+Inicie o backend na raiz do módulo:
 
-### Modelo de Dados (Principais Entidades)
-* **Usuário:** Controle de acesso e login (Perfis: Aluno, Professor, Coordenadora).
-* **Docente:** Dados específicos dos professores.
-* **Aluno:** Dados cadastrais e socioeconômicos.
-* **Curso:** Catálogo de programas (Aleph, Bem Viver, Livre).
-* **Turma:** Oferta de cursos ligando Docentes e Alunos.
-* **Matrícula & Frequência:** Controle acadêmico.
+```bash
+./mvnw spring-boot:run
+```
 
-## ⚙️ Como Executar o Projeto
+A API fica em `http://localhost:6060/api`.
 
-### Pré-requisitos
-* Java JDK 17 ou superior instalado.
-* Maven instalado (ou usar o wrapper `mvnw` incluso).
-* Git instalado.
+## Autenticação e perfis
 
-### Passo a Passo
+Faça login com `POST /api/auth/login`:
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone [https://github.com/SEU-USUARIO/icol-backend.git](https://github.com/SEU-USUARIO/icol-backend.git)
-    cd icol-backend
-    ```
-
-2.  **Configure o Banco de Dados:**
-    * Por padrão, o projeto está configurado para usar o **H2 Database** (em memória) para facilitar os testes.
-    * Para usar PostgreSQL, altere as configurações no arquivo `src/main/resources/application.properties` (ou `.yml`).
-
-3.  **Execute a aplicação:**
-    ```bash
-    ./mvnw spring-boot:run
-    ```
-
-4.  **Acesse a API:**
-    * O servidor iniciará na porta `8080`.
-    * URL Base: `http://localhost:8080`
-    * Console do Banco H2 (se habilitado): `http://localhost:8080/h2-console`
-
-## 🧪 Testando os Endpoints
-
-Você pode utilizar o **Postman**, **Insomnia** ou a extensão **REST Client** do VS Code.
-
-### Exemplo de Criação de Usuário (POST /usuarios)
 ```json
 {
-  "emailUsuario": "admin@icol.org.br",
-  "senha": "senhaForte123",
-  "tipoUsuario": "COORDENADORA"
+  "email": "coordenadora@icol.org.br",
+  "senha": "<senha-configurada-no-seed>"
 }
+```
+
+Para acessar rotas protegidas, envie o `accessToken` da resposta no cabeçalho
+`Authorization` com o esquema `Bearer`. `GET /api/auth/me` retorna o perfil autenticado.
+`GET /api/cursos` e `GET /api/turmas` (somente turmas abertas) são públicos.
+
+- **COORDENADORA:** administra usuários, docentes, cursos e turmas; possui
+  acesso administrativo a matrículas e frequências.
+- **ALUNO:** acessa apenas seu cadastro, suas matrículas e suas frequências.
+- **PROFESSOR:** acessa alunos e matrículas das próprias turmas, registra
+  frequências nas próprias turmas e administra os próprios avisos. Os dados de
+  aluno retornados ao professor não incluem CPF nem declaração socioeconômica.
+
+## Limitações de segurança
+
+- Senhas novas são armazenadas usando Argon2id com salt aleatório. Hashes
+  BCrypt antigos sem prefixo não são migrados automaticamente; recrie os
+  usuários de teste.
+- Argon2id é intencionalmente custoso em CPU e memória. Dimensione os recursos
+  usando testes de carga, sem reduzir os parâmetros do hash sem avaliação.
+- O limite de tentativas de login é mantido em memória por instância; em
+  múltiplas réplicas, cada instância aplica seu próprio limite.
+- JWT não possui revogação antes do vencimento. Um token pode continuar válido
+  até expirar mesmo depois da inativação da conta; a validade padrão é uma hora.
+
+## Testes
+
+```bash
+./mvnw test
+```
+
+Os testes de integração iniciam PostgreSQL via Testcontainers e precisam do
+Docker disponível.

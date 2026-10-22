@@ -6,6 +6,7 @@ import com.br.org.icol.icolbackend.model.FrequenciaIcol;
 import com.br.org.icol.icolbackend.model.MatriculaIcol;
 import com.br.org.icol.icolbackend.repository.FrequenciaIcolRepositorio;
 import com.br.org.icol.icolbackend.repository.MatriculaIcolRepositorio;
+import com.br.org.icol.icolbackend.service.AcessoUsuario;
 import com.br.org.icol.icolbackend.dto.FrequenciaRequestDTO;
 import com.br.org.icol.icolbackend.dto.FrequenciaResponseDTO;
 import org.springframework.stereotype.Service;
@@ -20,11 +21,14 @@ public class FrequenciaIcolService {
     
     private final FrequenciaIcolRepositorio repoFrequencia;
     private final MatriculaIcolRepositorio repoMatricula;
+    private final AcessoUsuario acessoUsuario;
 
     public FrequenciaIcolService(FrequenciaIcolRepositorio repoFrequencia, 
-                                MatriculaIcolRepositorio repoMatricula) {
+                                MatriculaIcolRepositorio repoMatricula,
+                                AcessoUsuario acessoUsuario) {
         this.repoFrequencia = repoFrequencia;
         this.repoMatricula = repoMatricula;
+        this.acessoUsuario = acessoUsuario;
     }
 
     // Método auxiliar para converter Entidade -> DTO
@@ -52,8 +56,44 @@ public class FrequenciaIcolService {
                 .collect(Collectors.toList());
     }
 
+    public List<FrequenciaResponseDTO> listarVisiveis() {
+        if (acessoUsuario.ehCoordenadora()) {
+            return listar();
+        }
+        String email = acessoUsuario.emailAtual();
+        List<FrequenciaIcol> frequencias;
+        if (acessoUsuario.possuiPapel("ALUNO")) {
+            frequencias = repoFrequencia.findDoAluno(email);
+        } else if (acessoUsuario.possuiPapel("PROFESSOR")) {
+            frequencias = repoFrequencia.findDasTurmasDoProfessor(email);
+        } else {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Perfil sem acesso a frequências."
+            );
+        }
+        return frequencias.stream().map(this::toDTO).toList();
+    }
+
     public FrequenciaResponseDTO buscar(Long id) {
         return toDTO(buscarEntidade(id));
+    }
+
+    public FrequenciaResponseDTO buscarVisivel(Long id) {
+        if (acessoUsuario.ehCoordenadora()) {
+            return buscar(id);
+        }
+        String email = acessoUsuario.emailAtual();
+        FrequenciaIcol frequencia = buscarEntidade(id);
+        if (acessoUsuario.possuiPapel("ALUNO")
+                && frequencia.getMatriculaId().getAlunoMatrId().getUsuario()
+                .getEmailUsuario().equalsIgnoreCase(email)) {
+            return toDTO(frequencia);
+        }
+        if (acessoUsuario.possuiPapel("PROFESSOR")
+                && repoFrequencia.existsDaTurmaDoProfessor(id, email)) {
+            return toDTO(frequencia);
+        }
+        throw new RequisicaoNaoEncontrada("Frequência não encontrada.");
     }
 
     public FrequenciaResponseDTO registrar(FrequenciaRequestDTO dto) {
@@ -75,6 +115,19 @@ public class FrequenciaIcolService {
         return toDTO(salvo);
     }
 
+    public FrequenciaResponseDTO registrarPorProfessorOuCoordenadora(FrequenciaRequestDTO dto) {
+        if (!acessoUsuario.ehCoordenadora()) {
+            String email = acessoUsuario.emailAtual();
+            if (!acessoUsuario.possuiPapel("PROFESSOR")
+                    || !repoFrequencia.matriculaPertenceAoProfessor(dto.getMatriculaId(), email)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Só o professor da turma pode registrar a frequência."
+                );
+            }
+        }
+        return registrar(dto);
+    }
+
     public FrequenciaResponseDTO atualizar(Long id, FrequenciaRequestDTO dto) {
         FrequenciaIcol existente = buscarEntidade(id);
 
@@ -84,5 +137,21 @@ public class FrequenciaIcolService {
 
         FrequenciaIcol salvo = repoFrequencia.save(existente);
         return toDTO(salvo);
+    }
+
+    public FrequenciaResponseDTO atualizarPorProfessorOuCoordenadora(
+            Long id,
+            FrequenciaRequestDTO dto
+    ) {
+        if (!acessoUsuario.ehCoordenadora()) {
+            String email = acessoUsuario.emailAtual();
+            if (!acessoUsuario.possuiPapel("PROFESSOR")
+                    || !repoFrequencia.existsDaTurmaDoProfessor(id, email)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Só o professor da turma pode alterar a frequência."
+                );
+            }
+        }
+        return atualizar(id, dto);
     }
 }

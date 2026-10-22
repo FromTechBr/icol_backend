@@ -5,6 +5,7 @@ import com.br.org.icol.icolbackend.model.AvisosMuralIcol;
 import com.br.org.icol.icolbackend.model.UsuariosIcol;
 import com.br.org.icol.icolbackend.repository.AvisosMuralIcolRepositorio;
 import com.br.org.icol.icolbackend.repository.UsuariosIcolRepositorio;
+import com.br.org.icol.icolbackend.service.AcessoUsuario;
 import com.br.org.icol.icolbackend.dto.AvisoMuralRequestDTO;
 import com.br.org.icol.icolbackend.dto.AvisoMuralResponseDTO;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,14 @@ public class AvisosMuralIcolService {
     
     private final AvisosMuralIcolRepositorio repoAvisos;
     private final UsuariosIcolRepositorio repoUsuarios;
+    private final AcessoUsuario acessoUsuario;
 
     public AvisosMuralIcolService(AvisosMuralIcolRepositorio repoAvisos, 
-                                 UsuariosIcolRepositorio repoUsuarios) {
+                                 UsuariosIcolRepositorio repoUsuarios,
+                                 AcessoUsuario acessoUsuario) {
         this.repoAvisos = repoAvisos;
         this.repoUsuarios = repoUsuarios;
+        this.acessoUsuario = acessoUsuario;
     }
 
     private AvisoMuralResponseDTO toDTO(AvisosMuralIcol entidade) {
@@ -55,7 +59,8 @@ public class AvisosMuralIcolService {
     }
 
     public AvisoMuralResponseDTO criar(AvisoMuralRequestDTO dto) {
-        UsuariosIcol autorExistente = repoUsuarios.findById(dto.getAutorId())
+        UsuariosIcol autorExistente = repoUsuarios.findByEmailUsuarioIgnoreCase(
+                        acessoUsuario.emailAtual())
                 .orElseThrow(() -> new RequisicaoNaoEncontrada("Autor (Usuário) não encontrado."));
 
         AvisosMuralIcol avisoCadastrar = new AvisosMuralIcol();
@@ -69,6 +74,7 @@ public class AvisosMuralIcolService {
     }
 
     public AvisoMuralResponseDTO atualizar(Long id, AvisoMuralRequestDTO dto) {
+        garantirAutorOuCoordenadora(id);
         AvisosMuralIcol existente = buscarEntidade(id);
         
         existente.setTitulo(dto.getTitulo());
@@ -79,9 +85,20 @@ public class AvisosMuralIcolService {
     }
 
     public void deletar(Long id) {
+        garantirAutorOuCoordenadora(id);
         if (!repoAvisos.existsById(id)) {
             throw new RequisicaoNaoEncontrada("Aviso não encontrado para exclusão.");
         }
         repoAvisos.deleteById(id);
+    }
+
+    private void garantirAutorOuCoordenadora(Long id) {
+        if (!acessoUsuario.ehCoordenadora()
+                && (!acessoUsuario.possuiPapel("PROFESSOR")
+                || !repoAvisos.pertenceAoAutor(id, acessoUsuario.emailAtual()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Só o autor pode alterar ou remover este aviso."
+            );
+        }
     }
 }

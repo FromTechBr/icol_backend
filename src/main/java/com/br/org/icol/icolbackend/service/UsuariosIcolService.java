@@ -52,6 +52,9 @@ public class UsuariosIcolService {
     }
 
     public UsuarioResponseDTO criar(UsuarioRequestDTO dto){
+        if (dto.getSenha() == null || dto.getSenha().isBlank()) {
+            throw new RequisicaoInvalida("A senha é obrigatória.");
+        }
         if(repoUsuarios.findByEmailUsuario(dto.getEmail()).isPresent()){
             throw new RequisicaoInvalida("Este email já está cadastrado!");
         }
@@ -77,8 +80,9 @@ public class UsuariosIcolService {
         }
         
         existente.setEmailUsuario(dto.getEmail());
-        String novaSenha = passwordEncoder.encode(dto.getSenha());
-        existente.setSenha(novaSenha);
+        if (dto.getSenha() != null && !dto.getSenha().isBlank()) {
+            existente.setSenha(passwordEncoder.encode(dto.getSenha()));
+        }
         existente.setTipoUsuario(dto.getTipoUsuario());
         
         UsuariosIcol salvo = repoUsuarios.save(existente);

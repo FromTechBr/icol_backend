@@ -2,6 +2,9 @@ spring:
   datasource:
     password: test
 
+jwt:
+  secret: "test-only-signing-secret-with-at-least-256-bits-icol"
+
 server:
   port: 0
 

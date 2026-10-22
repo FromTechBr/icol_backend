@@ -10,5 +10,6 @@ import com.br.org.icol.icolbackend.model.UsuariosIcol;
 @Repository
 public interface UsuariosIcolRepositorio extends JpaRepository<UsuariosIcol, Long>{
     Optional<UsuariosIcol> findByEmailUsuario(String emailUsuario);
+    Optional<UsuariosIcol> findByEmailUsuarioIgnoreCase(String emailUsuario);
     boolean existsByTipoUsuario(TiposUsuario tipoUsuario);
 }

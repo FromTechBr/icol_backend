@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.br.org.icol.icolbackend.service.UsuariosIcolService;
 import com.br.org.icol.icolbackend.dto.UsuarioRequestDTO;
@@ -13,6 +14,7 @@ import com.br.org.icol.icolbackend.dto.UsuarioResponseDTO;
 
 @RestController
 @RequestMapping("/usuarios")
+@PreAuthorize("hasRole('COORDENADORA')")
 public class UsuariosIcolController {
     private final UsuariosIcolService servicoUsuarios;
     

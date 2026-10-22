@@ -11,6 +11,7 @@ import com.br.org.icol.icolbackend.exception.RequisicaoNaoEncontrada;
 import com.br.org.icol.icolbackend.exception.RequisicaoInvalida;
 import com.br.org.icol.icolbackend.dto.AlunoRequestDTO;
 import com.br.org.icol.icolbackend.dto.AlunoResponseDTO;
+import com.br.org.icol.icolbackend.dto.AlunoResumoDTO;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,12 +24,19 @@ public class AlunosIcolService {
     private final AlunosIcolRepositorio repoAlunos;
     private final UsuariosIcolRepositorio repoUsuarios;
     private final DocentesIcolRepositorio repoDocentes;
+    private final AcessoUsuario acessoUsuario;
 
     // Injeção de dependência dos repositórios via construtor
-    public AlunosIcolService(AlunosIcolRepositorio repoAlunos, UsuariosIcolRepositorio repoUsuarios, DocentesIcolRepositorio repoDocentes) {
+    public AlunosIcolService(
+            AlunosIcolRepositorio repoAlunos,
+            UsuariosIcolRepositorio repoUsuarios,
+            DocentesIcolRepositorio repoDocentes,
+            AcessoUsuario acessoUsuario
+    ) {
         this.repoAlunos = repoAlunos;
         this.repoUsuarios = repoUsuarios;
         this.repoDocentes = repoDocentes;
+        this.acessoUsuario = acessoUsuario;
     }
 
     // Método auxiliar para converter Entidade -> DTO
@@ -65,6 +73,55 @@ public class AlunosIcolService {
     // 2. Buscar aluno por ID
     public AlunoResponseDTO buscar(Long id) {
         return toDTO(buscarEntidade(id));
+    }
+
+    public List<?> listarVisiveis() {
+        String email = acessoUsuario.emailAtual();
+        if (acessoUsuario.ehCoordenadora()) {
+            return listar();
+        }
+        if (acessoUsuario.possuiPapel("ALUNO")) {
+            return repoAlunos.findAtivosDoUsuario(email).stream()
+                    .map(this::toDTO)
+                    .toList();
+        }
+        if (acessoUsuario.possuiPapel("PROFESSOR")) {
+            return repoAlunos.findAtivosNasTurmasDoProfessor(email).stream()
+                    .map(aluno -> new AlunoResumoDTO(aluno.getId(), aluno.getNomeCompleto()))
+                    .toList();
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Perfil sem acesso a alunos.");
+    }
+
+    public Object buscarVisivel(Long id) {
+        if (acessoUsuario.ehCoordenadora()) {
+            return buscar(id);
+        }
+        String email = acessoUsuario.emailAtual();
+        if (acessoUsuario.possuiPapel("ALUNO")) {
+            return repoAlunos.findAtivoDoUsuario(id, email)
+                    .map(this::toDTO)
+                    .orElseThrow(() -> new RequisicaoNaoEncontrada("Aluno não encontrado."));
+        }
+        if (acessoUsuario.possuiPapel("PROFESSOR")) {
+            return repoAlunos.findAtivoNasTurmasDoProfessor(id, email)
+                    .map(aluno -> new AlunoResumoDTO(aluno.getId(), aluno.getNomeCompleto()))
+                    .orElseThrow(() -> new RequisicaoNaoEncontrada("Aluno não encontrado."));
+        }
+        throw new org.springframework.security.access.AccessDeniedException("Perfil sem acesso a alunos.");
+    }
+
+    public AlunoResponseDTO atualizarProprioOuAdministrativo(Long id, AlunoRequestDTO dto) {
+        if (!acessoUsuario.ehCoordenadora()) {
+            String email = acessoUsuario.emailAtual();
+            if (!acessoUsuario.possuiPapel("ALUNO")
+                    || repoAlunos.findAtivoDoUsuario(id, email).isEmpty()) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Você só pode atualizar seu próprio cadastro."
+                );
+            }
+        }
+        return atualizar(id, dto);
     }
 
     // 3. Criar Aluno (Com regras de negócio)

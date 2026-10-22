@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -31,18 +32,21 @@ public class AvisosMuralIcolController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENADORA')")
     public ResponseEntity<AvisoMuralResponseDTO> criar(@Valid @RequestBody AvisoMuralRequestDTO dto) {
         AvisoMuralResponseDTO novo = servicoAvisos.criar(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(novo);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENADORA')")
     public ResponseEntity<AvisoMuralResponseDTO> atualizar(@PathVariable Long id, @Valid @RequestBody AvisoMuralRequestDTO dto) {
         AvisoMuralResponseDTO atualizado = servicoAvisos.atualizar(id, dto);
         return ResponseEntity.ok(atualizado);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PROFESSOR', 'COORDENADORA')")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         servicoAvisos.deletar(id);
         return ResponseEntity.noContent().build();

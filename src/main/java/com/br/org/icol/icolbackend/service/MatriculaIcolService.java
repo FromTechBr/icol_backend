@@ -8,6 +8,8 @@ import com.br.org.icol.icolbackend.model.TurmasIcol;
 import com.br.org.icol.icolbackend.repository.AlunosIcolRepositorio;
 import com.br.org.icol.icolbackend.repository.MatriculaIcolRepositorio;
 import com.br.org.icol.icolbackend.repository.TurmasIcolRepositorio;
+import com.br.org.icol.icolbackend.service.AcessoUsuario;
+import com.br.org.icol.icolbackend.enums.StatusMatricula;
 import com.br.org.icol.icolbackend.dto.MatriculaRequestDTO;
 import com.br.org.icol.icolbackend.dto.MatriculaResponseDTO;
 import org.springframework.stereotype.Service;
@@ -23,13 +25,16 @@ public class MatriculaIcolService {
     private final MatriculaIcolRepositorio repoMatricula;
     private final AlunosIcolRepositorio repoAlunos;
     private final TurmasIcolRepositorio repoTurmas;
+    private final AcessoUsuario acessoUsuario;
 
     public MatriculaIcolService(MatriculaIcolRepositorio repoMatricula, 
                                AlunosIcolRepositorio repoAlunos,
-                               TurmasIcolRepositorio repoTurmas) {
+                               TurmasIcolRepositorio repoTurmas,
+                               AcessoUsuario acessoUsuario) {
         this.repoMatricula = repoMatricula;
         this.repoAlunos = repoAlunos;
         this.repoTurmas = repoTurmas;
+        this.acessoUsuario = acessoUsuario;
     }
 
     // Método auxiliar para converter Entidade -> DTO
@@ -62,13 +67,60 @@ public class MatriculaIcolService {
                 .collect(Collectors.toList());
     }
 
+    public List<MatriculaResponseDTO> listarVisiveis() {
+        if (acessoUsuario.ehCoordenadora()) {
+            return listar();
+        }
+        String email = acessoUsuario.emailAtual();
+        List<MatriculaIcol> matriculas;
+        if (acessoUsuario.possuiPapel("ALUNO")) {
+            matriculas = repoMatricula.findAtivasDoAluno(email);
+        } else if (acessoUsuario.possuiPapel("PROFESSOR")) {
+            matriculas = repoMatricula.findAtivasDasTurmasDoProfessor(email);
+        } else {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Perfil sem acesso a matrículas."
+            );
+        }
+        return matriculas.stream().map(this::toDTO).toList();
+    }
+
     public MatriculaResponseDTO buscar(Long id){
         return toDTO(buscarEntidade(id));
+    }
+
+    public MatriculaResponseDTO buscarVisivel(Long id) {
+        if (acessoUsuario.ehCoordenadora()) {
+            return buscar(id);
+        }
+        String email = acessoUsuario.emailAtual();
+        if (acessoUsuario.possuiPapel("ALUNO")) {
+            return repoMatricula.findAtivaDoAluno(id, email)
+                    .map(this::toDTO)
+                    .orElseThrow(() -> new RequisicaoNaoEncontrada("Matrícula não encontrada."));
+        }
+        if (acessoUsuario.possuiPapel("PROFESSOR")) {
+            return repoMatricula.findAtivaDaTurmaDoProfessor(id, email)
+                    .map(this::toDTO)
+                    .orElseThrow(() -> new RequisicaoNaoEncontrada("Matrícula não encontrada."));
+        }
+        throw new org.springframework.security.access.AccessDeniedException(
+                "Perfil sem acesso a matrículas."
+        );
     }
     
     public MatriculaResponseDTO criar(MatriculaRequestDTO dto){
         AlunosIcol alunoExistente = repoAlunos.findById(dto.getAlunoId())
                 .orElseThrow(()-> new RequisicaoNaoEncontrada("Aluno não encontrado."));
+
+        if (!acessoUsuario.ehCoordenadora()
+                && (!acessoUsuario.possuiPapel("ALUNO")
+                || !alunoExistente.getUsuario().getEmailUsuario()
+                .equalsIgnoreCase(acessoUsuario.emailAtual()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Você só pode solicitar matrícula para seu próprio cadastro."
+            );
+        }
         
         TurmasIcol turmaExistente = repoTurmas.findById(dto.getTurmaId())
                 .orElseThrow(()-> new RequisicaoNaoEncontrada("Turma não encontrada."));
@@ -85,7 +137,7 @@ public class MatriculaIcolService {
         }
         
         MatriculaIcol matriculaCadastrar = new MatriculaIcol();
-        matriculaCadastrar.setStatusMatricula(dto.getStatusMatricula());
+        matriculaCadastrar.setStatusMatricula(StatusMatricula.PENDENTE);
         matriculaCadastrar.setDataMatricula(LocalDate.now());
         matriculaCadastrar.setAlunoMatrId(alunoExistente);
         matriculaCadastrar.setTurmaMatrId(turmaExistente);

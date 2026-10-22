@@ -24,17 +24,22 @@ import com.br.org.icol.icolbackend.service.AlunosIcolService;
 import com.br.org.icol.icolbackend.service.FrequenciaIcolService;
 import com.br.org.icol.icolbackend.service.MatriculaIcolService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,11 +79,25 @@ class RegrasExistentesIntegrationTests {
 
     private AlunosIcol aluno;
     private TurmasIcol turma;
+    private UsuariosIcol coordenadora;
 
     @BeforeEach
     void setUp() {
+        coordenadora = criarUsuario(TiposUsuario.COORDENADORA);
+        SecurityContextHolder.getContext().setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(
+                        coordenadora.getEmailUsuario(),
+                        "n/a",
+                        List.of(new SimpleGrantedAuthority("ROLE_COORDENADORA"))
+                )
+        );
         aluno = criarAluno("111.222.333-44");
         turma = criarTurma(1);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -134,6 +153,7 @@ class RegrasExistentesIntegrationTests {
     void criaCoordenadoraInicialComCredenciaisConfiguradas() {
         String email = UUID.randomUUID() + "@icol.test";
         String senha = "senha-segura-de-teste";
+        usuariosRepositorio.delete(coordenadora);
         CoordenadoraInicialSeeder seeder = new CoordenadoraInicialSeeder(
                 usuariosRepositorio,
                 passwordEncoder,
@@ -200,7 +220,12 @@ class RegrasExistentesIntegrationTests {
         MatriculaRequestDTO dto = new MatriculaRequestDTO();
         dto.setAlunoId(aluno.getId());
         dto.setTurmaId(turma.getId());
-        dto.setStatusMatricula(status);
-        return matriculaService.criar(dto).getId();
+        dto.setStatusMatricula(StatusMatricula.PENDENTE);
+        Long matriculaId = matriculaService.criar(dto).getId();
+        if (status != StatusMatricula.PENDENTE) {
+            dto.setStatusMatricula(status);
+            matriculaService.atualizar(matriculaId, dto);
+        }
+        return matriculaId;
     }
 }

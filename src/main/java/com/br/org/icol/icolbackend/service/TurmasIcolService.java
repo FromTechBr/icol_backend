@@ -65,6 +65,18 @@ public class TurmasIcolService {
     public TurmaResponseDTO buscar(Long id){
         return toDTO(buscarEntidade(id));
     }
+
+    public List<TurmaResponseDTO> listarAbertas() {
+        return repoTurmas.findAllAtivasAbertas().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public TurmaResponseDTO buscarAberta(Long id) {
+        return repoTurmas.findByIdAtivaAberta(id)
+                .map(this::toDTO)
+                .orElseThrow(() -> new RequisicaoNaoEncontrada("Turma aberta não encontrada."));
+    }
     
     public TurmaResponseDTO criar(TurmaRequestDTO dto){
         CursosIcol cursoExistente = repoCursos.findById(dto.getCursoId())
@@ -102,4 +114,3 @@ public class TurmasIcolService {
         repoTurmas.save(turmaInativar);
     }
 }
-

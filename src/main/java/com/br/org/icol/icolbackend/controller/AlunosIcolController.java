@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -21,15 +22,16 @@ public class AlunosIcolController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AlunoResponseDTO>> listar() {
-        return ResponseEntity.ok(servicoAlunos.listar());
+    public ResponseEntity<List<?>> listar() {
+        return ResponseEntity.ok(servicoAlunos.listarVisiveis());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AlunoResponseDTO> buscar(@PathVariable Long id) {
-        return ResponseEntity.ok(servicoAlunos.buscar(id));
+    public ResponseEntity<?> buscar(@PathVariable Long id) {
+        return ResponseEntity.ok(servicoAlunos.buscarVisivel(id));
     }
 
+    @PreAuthorize("hasRole('COORDENADORA')")
     @PostMapping
     public ResponseEntity<AlunoResponseDTO> criar(@Valid @RequestBody AlunoRequestDTO dto) {
         AlunoResponseDTO novo = servicoAlunos.criar(dto);
@@ -37,11 +39,13 @@ public class AlunosIcolController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ALUNO', 'COORDENADORA')")
     public ResponseEntity<AlunoResponseDTO> atualizar(@PathVariable Long id, @Valid @RequestBody AlunoRequestDTO dto) {
-        AlunoResponseDTO atualizado = servicoAlunos.atualizar(id, dto);
+        AlunoResponseDTO atualizado = servicoAlunos.atualizarProprioOuAdministrativo(id, dto);
         return ResponseEntity.ok(atualizado);
     }
 
+    @PreAuthorize("hasRole('COORDENADORA')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         servicoAlunos.inativar(id);

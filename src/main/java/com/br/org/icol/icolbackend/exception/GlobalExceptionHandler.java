@@ -7,6 +7,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
@@ -70,6 +71,41 @@ public class GlobalExceptionHandler {
             LocalDateTime.now()
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
+    }
+
+    @ExceptionHandler(CredenciaisInvalidasException.class)
+    public ResponseEntity<ErroResponse> handleCredenciaisInvalidas(CredenciaisInvalidasException ex) {
+        ErroResponse erro = new ErroResponse(
+            HttpStatus.UNAUTHORIZED.value(),
+            "Não Autenticado",
+            ex.getMessage(),
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(erro);
+    }
+
+    @ExceptionHandler(LimiteLoginExcedidoException.class)
+    public ResponseEntity<ErroResponse> handleLimiteLoginExcedido(LimiteLoginExcedidoException ex) {
+        ErroResponse erro = new ErroResponse(
+            HttpStatus.TOO_MANY_REQUESTS.value(),
+            "Limite de Tentativas Excedido",
+            ex.getMessage(),
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header("Retry-After", "900")
+            .body(erro);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErroResponse> handleAcessoNegado(AccessDeniedException ex) {
+        ErroResponse erro = new ErroResponse(
+            HttpStatus.FORBIDDEN.value(),
+            "Acesso Negado",
+            "Você não tem permissão para acessar este recurso.",
+            LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
     }
 
     @ExceptionHandler(Exception.class)

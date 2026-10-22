@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../../../.vscode/spring-boot-schema.json
+# yaml-language-server: $schema=../../../.vscode/spring-boot-schema.json
 spring:
   application:
     name: icolsystem
@@ -38,9 +38,16 @@ server:
 # CONFIGURAÇÕES DE SEGURANÇA (JWT)
 # ===============================
 jwt:
-  # O valor padrão foi removido por segurança. Ele DEVE ser passado pelo ambiente.
   secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000}
+  expiration: ${JWT_EXPIRATION:3600000}
+
+security:
+  argon2:
+    salt-length: ${SECURITY_ARGON2_SALT_LENGTH:16}
+    hash-length: ${SECURITY_ARGON2_HASH_LENGTH:32}
+    parallelism: ${SECURITY_ARGON2_PARALLELISM:1}
+    memory: ${SECURITY_ARGON2_MEMORY:19456}
+    iterations: ${SECURITY_ARGON2_ITERATIONS:2}
 
 # ===============================
 # CONFIGURAÇÕES DE LOGGING

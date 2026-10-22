@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 
@@ -31,18 +32,21 @@ public class CursosIcolController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('COORDENADORA')")
     public ResponseEntity<CursoResponseDTO> criar(@Valid @RequestBody CursoRequestDTO dto) {
         CursoResponseDTO novo = servicoCursos.criar(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(novo);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('COORDENADORA')")
     public ResponseEntity<CursoResponseDTO> atualizar(@PathVariable Long id, @Valid @RequestBody CursoRequestDTO dto) {
         CursoResponseDTO atualizado = servicoCursos.atualizar(id, dto);
         return ResponseEntity.ok(atualizado);
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('COORDENADORA')")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         servicoCursos.inativar(id);
         return ResponseEntity.noContent().build();

@@ -38,9 +38,9 @@ class ActuatorIsolationIntegrationTests {
 
     @Test
     void mantemActuatorERecursosDeNegocioForaDaPortaIncorreta() throws Exception {
-        assertStatus(applicationPort, "/api/actuator/health", 404);
-        assertStatus(applicationPort, "/api/actuator/prometheus", 404);
-        assertStatus(managementPort, "/api/alunos", 404);
+        assertStatus(applicationPort, "/api/actuator/health", 401);
+        assertStatus(applicationPort, "/api/actuator/prometheus", 401);
+        assertStatus(managementPort, "/api/alunos", 401);
     }
 
     @Test

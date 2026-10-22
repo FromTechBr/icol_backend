@@ -16,10 +16,17 @@ public class AvisosMuralIcol {
     @JoinColumn(name="usuario_id", nullable=false)
     private UsuariosIcol autor;
 
+    @ManyToOne(fetch=FetchType.LAZY)
+    @JoinColumn(name="turma_id")
+    private TurmasIcol turma;
+
     @Column(nullable=false)
     private String titulo;
     @Column(nullable=false)
     private String conteudo;
     @Column(nullable=false)
     private LocalDateTime dataPostagem;
+
+    @Column(nullable=false)
+    private Boolean ativo = true;
 }

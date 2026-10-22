@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    password: test
+
+server:
+  port: 0
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+management:
+  server:
+    port: 0
+
+logging:
+  level:
+    root: WARN
+    "[org.hibernate.orm.jdbc.bind]": WARN

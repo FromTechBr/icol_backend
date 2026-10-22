@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.ToString;
 import lombok.EqualsAndHashCode;
 import java.util.List;
+import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Data
@@ -25,6 +26,12 @@ public class CursosIcol {
     private String duracao;
     @Column(nullable=false)
     private Boolean ativo=true;
+
+    @Column(nullable=false)
+    private Boolean matriculaAutomatica = false;
+
+    @Column(precision=5, scale=2)
+    private BigDecimal limiteFaltasPercentual;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable=false)

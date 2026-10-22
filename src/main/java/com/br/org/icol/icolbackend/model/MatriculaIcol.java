@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 import java.time.*;
 import java.util.List;
 import com.br.org.icol.icolbackend.enums.StatusMatricula;
+import com.br.org.icol.icolbackend.enums.SituacaoFinalMatricula;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Data
@@ -25,6 +26,13 @@ public class MatriculaIcol {
     @Enumerated(EnumType.STRING)
     @Column(nullable=false)
     private StatusMatricula statusMatricula;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name="situacao_final")
+    private SituacaoFinalMatricula situacaoFinal;
+
+    @Column(nullable=false)
+    private Boolean ativo = true;
 
     @ManyToOne(fetch=FetchType.LAZY)
     @JoinColumn(name="aluno_id", nullable=false)

@@ -41,40 +41,13 @@
         </rollingPolicy>
     </appender>
 
-    <!-- Appender: Arquivo para SQL do Hibernate -->
-    <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_FILE_PATH}/sql.log</file>
-        <encoder>
-            <pattern>${LOG_PATTERN}</pattern>
-        </encoder>
-        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>${LOG_FILE_PATH}/sql-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>${LOG_FILE_MAX_SIZE}</maxFileSize>
-            <maxHistory>${LOG_FILE_MAX_HISTORY}</maxHistory>
-            <totalSizeCap>50MB</totalSizeCap>
-        </rollingPolicy>
-    </appender>
-
     <!-- Logger: HTTP Requests (apenas HTTP) -->
     <logger name="HTTP_REQUESTS" level="INFO" additivity="false">
         <appender-ref ref="FILE_HTTP"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-    <!-- Logger: Hibernate SQL -->
-    <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
-        <appender-ref ref="FILE_SQL"/>
-    </logger>
-
-    <logger name="org.hibernate.type.descriptor.sql" level="TRACE" additivity="false">
-        <appender-ref ref="FILE_SQL"/>
-    </logger>
-
-    <!-- Logger: Spring Web (DEBUG) -->
-    <logger name="org.springframework.web" level="DEBUG"/>
-    
-    <!-- Logger: Spring Security (DEBUG) -->
-    <logger name="org.springframework.security" level="DEBUG"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
 
     <!-- Logger raiz: INFO -->
     <root level="INFO">
@@ -84,6 +57,34 @@
 
     <!-- Profiles específicos -->
     <springProfile name="dev">
+        <appender name="FILE_SQL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_FILE_PATH}/sql.log</file>
+            <encoder>
+                <pattern>${LOG_PATTERN}</pattern>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_FILE_PATH}/sql-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>${LOG_FILE_MAX_SIZE}</maxFileSize>
+                <maxHistory>${LOG_FILE_MAX_HISTORY}</maxHistory>
+                <totalSizeCap>50MB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <logger name="org.hibernate.SQL" level="DEBUG" additivity="false">
+            <appender-ref ref="FILE_SQL"/>
+        </logger>
+
+        <logger name="org.hibernate.type.descriptor.sql" level="TRACE" additivity="false">
+            <appender-ref ref="FILE_SQL"/>
+        </logger>
+
+        <logger name="org.hibernate.orm.jdbc.bind" level="TRACE" additivity="false">
+            <appender-ref ref="FILE_SQL"/>
+        </logger>
+
+        <logger name="org.springframework.web" level="DEBUG"/>
+        <logger name="org.springframework.security" level="DEBUG"/>
+
         <root level="DEBUG">
             <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE_APP"/>
